@@ -1,0 +1,91 @@
+# t2-mobile
+
+Учебный веб-портал оператора **t2** (ООО «Т2 Мобайл», ранее Tele2 Россия) для практической работы №2. Приложение запускается несколькими одинаковыми экземплярами, отдаёт идентификатор ноды в каждом ответе и готово к выносу за reverse-proxy Apache/Nginx в лабораторной работе №3.
+
+Это не официальный сайт t2. Бренд, слоган «Другие правила. Новый уровень», линейка тарифов и факты о компании использованы как учебная тема.
+
+## Что требуется работой №2 и как это закрыто
+
+| Ограничение | Реализация |
+|---|---|
+| Видно, какая нода ответила | Заголовок `X-Backend-Instance`, страница `/status`, бейдж внизу каждой страницы, поле `handled_by` у платежей и обращений |
+| Общее хранилище при падении ноды | PostgreSQL вынесен из приложения. `app-1` и `app-2` ходят в одну БД |
+| Приложение не терминирует TLS | Uvicorn слушает только HTTP. Cookie `Secure` выключен |
+| Сессии не в памяти и не в файлах | Redis, общий для всех инстансов |
+| Несколько экземпляров за балансировщиком | `docker compose up` поднимает `app-1`, `app-2` и Nginx на `:8080` |
+| Асинхронные запросы | FastAPI/async SQLAlchemy/Redis, `GET /api/v1/coverage/scan`, SSE `/api/v1/events` |
+
+Лабораторная №3 (Nginx на отдельных VM, DNS, TLS, Ansible) **сюда не входит**. Короткий задел лежит в `deploy/lab3/`.
+
+## Быстрый старт
+
+Нужны Docker Desktop / Docker Engine и Docker Compose.
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Откройте http://localhost:8080
+
+Проверка, что балансировщик чередует ноды:
+
+```bash
+make instance-check
+# или
+curl -sI http://localhost:8080/status | grep -i x-backend
+```
+
+Остановка:
+
+```bash
+docker compose down
+```
+
+### Демо-абоненты
+
+| Телефон | PIN | Тариф |
+|---|---|---|
+| +7 900 123-45-67 | 1234 | Мой онлайн |
+| +7 900 765-43-21 | 5678 | Безлимит |
+
+## Что внутри
+
+- Публичный сайт: тарифы, покрытие, о компании, поддержка
+- Личный кабинет: баланс, пакеты, пополнение
+- JSON API: `/api/docs`
+- Идентичность инстанса: `/api/v1/instance`, `/status`
+
+Стек: FastAPI, Jinja2, PostgreSQL, Redis, Nginx (только локальный HTTP-прокси), Docker Compose.
+
+Схема: [`docs/architecture.md`](docs/architecture.md)
+
+## Разработка без Docker
+
+PostgreSQL и Redis всё равно нужны (сессии и данные не должны жить в процессе приложения).
+
+```bash
+make install
+# поднять postgres:16 и redis:7, затем
+cp .env.example .env
+make dev
+```
+
+Тесты и линтер:
+
+```bash
+make test
+make lint
+```
+
+## Полезные URL
+
+- http://localhost:8080/ — главная
+- http://localhost:8080/status — какая нода ответила
+- http://localhost:8080/api/health — liveness
+- http://localhost:8080/api/ready — PostgreSQL + Redis
+- http://localhost:8080/api/docs — OpenAPI
+
+## Как это будут стыковать в работе №3
+
+На VM `192.168.xx.12` и `.13` запускается этот сервис на `:8000`. На `.11` ставится Nginx, `upstream` указывает на обе ноды, TLS терминируется на балансировщике. Health-check балансировщика: `GET /api/health`.

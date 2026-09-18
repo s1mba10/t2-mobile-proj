@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <div class="wrap">
+    <div class="kicker">мобильный оператор t2</div>
+    <h1>другие правила.<br />новый уровень.</h1>
+    <p>
+      Связь, интернет и сервисы федерального оператора. Вечные минуты и гигабайты,
+      безлимит внутри сети t2, заморозка цены и честные условия — чёрным по белому.
+    </p>
+    <div class="hero-actions">
+      <a class="btn btn-pink" href="/tariffs">Смотреть тарифы</a>
+      <a class="btn btn-ghost" href="/coverage">Проверить покрытие</a>
+    </div>
+    <div class="stats">
+      <div class="stat"><b>70+</b><span>регионов присутствия</span></div>
+      <div class="stat"><b>47+ млн</b><span>абонентов с учётом MVNO</span></div>
+      <div class="stat"><b>5G</b><span>Москва, Петербург и ещё 5 городов</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Тарифы без мелкого шрифта</h2>
+    <p class="lede">Подборка актуальных линейок t2: безлимитный интернет, гигабэк и заморозка цены до 2027 года.</p>
+    <div class="grid">
+      {% for tariff in tariffs %}
+      <article class="card {% if tariff.highlighted %}featured{% endif %}">
+        {% if tariff.price_frozen_until %}<span class="pill">цена до {{ tariff.price_frozen_until }}</span>{% endif %}
+        <h3>{{ tariff.name }}</h3>
+        <div class="price">{{ tariff.monthly_price }} ₽ <small>/мес</small></div>
+        <ul class="list">
+          <li>{{ tariff.internet }}</li>
+          <li>{{ tariff.minutes }}</li>
+          <li>{{ tariff.sms }}</li>
+        </ul>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <h2>Почему t2</h2>
+    <div class="features">
+      <div class="feature"><h3>Вечные ГБ и минуты</h3><p class="muted">Остатки не сгорают в конце месяца.</p></div>
+      <div class="feature"><h3>Безлимит на t2</h3><p class="muted">Звонки внутри сети не расходуют пакет.</p></div>
+      <div class="feature"><h3>Safewall</h3><p class="muted">Защита от скрытых подписок и нежелательного трафика.</p></div>
+      <div class="feature"><h3>Честный минус</h3><p class="muted">Связь продолжает работать, даже если баланс ушёл в минус.</p></div>
+    </div>
+  </div>
+</section>
+{% endblock %}

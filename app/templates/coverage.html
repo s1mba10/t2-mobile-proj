@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Покрытие сети t2{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="wrap">
+    <div class="kicker">сеть</div>
+    <h2>Покрытие и 5G</h2>
+    <p class="lede">
+      Коммерческий 5G t2 запущен 11 сентября 2026 года в Москве, Санкт-Петербурге,
+      Волгограде, Челябинске, Екатеринбурге, Перми и Красноярске. Сканирование ниже
+      выполняется асинхронно на той ноде, которая приняла запрос.
+    </p>
+    <p>
+      <button class="btn btn-pink" id="scan-btn" type="button">Запустить асинхронное сканирование</button>
+    </p>
+    <div id="scan-results"></div>
+    <div class="grid" style="margin-top: 28px">
+      {% for city in cities %}
+      <article class="card">
+        <h3>{{ city.name }}</h3>
+        <p class="muted">{{ city.region }}</p>
+        <ul class="list">
+          <li>LTE: {% if city.lte %}да{% else %}нет{% endif %}</li>
+          <li>5G: {% if city.five_g %}да{% else %}нет{% endif %}</li>
+          <li>Покрытие населения: {{ city.population_coverage }}%</li>
+        </ul>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,23 @@
+<table class="table">
+  <thead>
+    <tr>
+      <th>Город</th>
+      <th>5G</th>
+      <th>Задержка</th>
+      <th>Сигнал</th>
+      <th>Нода</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in results %}
+    <tr>
+      <td>{{ row.city }}</td>
+      <td>{% if row.five_g %}да{% else %}LTE{% endif %}</td>
+      <td>{{ row.latency_ms }} мс</td>
+      <td>{{ row.signal_dbm }} дБм</td>
+      <td>{{ row.probed_by }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="muted">Сканирование выполнено нодой <b>{{ instance.instance_id }}</b> через asyncio.gather.</p>

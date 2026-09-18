@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Тарифы t2{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="wrap">
+    <div class="kicker">линейка 2026</div>
+    <h2>Выберите тариф</h2>
+    <p class="lede">Условия близки к публичным предложениям t2. Для демо данные хранятся в общей PostgreSQL, а не на ноде приложения.</p>
+    <div class="grid">
+      {% for tariff in tariffs %}
+      <article class="card {% if tariff.highlighted %}featured{% endif %}">
+        {% if tariff.highlighted %}<span class="pill">хит</span>{% endif %}
+        <h3>{{ tariff.name }}</h3>
+        <div class="price">{{ tariff.monthly_price }} ₽ <small>/мес</small></div>
+        <ul class="list">
+          <li>{{ tariff.internet }}</li>
+          <li>{{ tariff.minutes }}</li>
+          <li>{{ tariff.sms }}</li>
+          <li>{{ tariff.extras }}</li>
+        </ul>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

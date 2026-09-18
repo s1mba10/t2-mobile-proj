@@ -1,0 +1,84 @@
+name: t2-mobile
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: t2
+      POSTGRES_PASSWORD: t2
+      POSTGRES_DB: t2mobile
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U t2 -d t2mobile"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    ports:
+      - "6379:6379"
+
+  app-1:
+    build: .
+    environment:
+      APP_ENV: production
+      INSTANCE_ID: app-1
+      SECRET_KEY: ${SECRET_KEY:-lab-secret-change-me}
+      DATABASE_URL: postgresql+asyncpg://t2:t2@db:5432/t2mobile
+      REDIS_URL: redis://redis:6379/0
+      SESSION_COOKIE_SECURE: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  app-2:
+    build: .
+    environment:
+      APP_ENV: production
+      INSTANCE_ID: app-2
+      SECRET_KEY: ${SECRET_KEY:-lab-secret-change-me}
+      DATABASE_URL: postgresql+asyncpg://t2:t2@db:5432/t2mobile
+      REDIS_URL: redis://redis:6379/0
+      SESSION_COOKIE_SECURE: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "8000"
+    restart: unless-stopped
+
+  proxy:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./deploy/local/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      app-1:
+        condition: service_healthy
+      app-2:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:

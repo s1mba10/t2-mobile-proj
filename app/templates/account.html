@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Личный кабинет t2{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="wrap">
+    <div class="kicker">личный кабинет</div>
+    <h2>Здравствуйте, {{ subscriber.full_name.split(' ')[0] }}</h2>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    {% if topped_up %}<div class="notice">Пополнение прошло успешно. Баланс общий для всех нод приложения.</div>{% endif %}
+    <div class="account-grid">
+      <article class="card">
+        <span class="pill">{{ subscriber.tariff.name }}</span>
+        <h3>{{ format_phone(subscriber.phone) }}</h3>
+        <p class="muted">{{ subscriber.region }}</p>
+        <div class="price">{{ '%.2f'|format(subscriber.balance|float) }} ₽</div>
+        <ul class="list">
+          <li>Осталось интернета: {{ subscriber.remaining_gb }} ГБ</li>
+          <li>Минуты: {{ subscriber.remaining_minutes }}</li>
+          <li>SMS: {{ subscriber.remaining_sms }}</li>
+        </ul>
+        <form action="/logout" method="post" style="margin-top: 16px">
+          <button class="btn btn-ghost" type="submit">Выйти</button>
+        </form>
+      </article>
+      <article class="card">
+        <h3>Пополнить баланс</h3>
+        <p class="muted">Платёж пишется в PostgreSQL. Если app-1 остановится, app-2 отдаст тот же баланс.</p>
+        <form class="form" action="/account/topup" method="post">
+          <label>Сумма, ₽
+            <input name="amount" type="number" min="1" max="15000" step="1" value="300" required />
+          </label>
+          <label>Способ
+            <select name="method">
+              <option value="card">Карта</option>
+              <option value="sbp">СБП</option>
+            </select>
+          </label>
+          <button class="btn btn-pink" type="submit">Пополнить</button>
+        </form>
+      </article>
+    </div>
+    {% if subscriber.payments %}
+    <h2 style="margin-top: 36px">История пополнений</h2>
+    <table class="table">
+      <thead><tr><th>ID</th><th>Сумма</th><th>Способ</th><th>Нода</th></tr></thead>
+      <tbody>
+        {% for payment in subscriber.payments|sort(attribute='id', reverse=True) %}
+        <tr>
+          <td>{{ payment.id }}</td>
+          <td>{{ payment.amount }} ₽</td>
+          <td>{{ payment.method }}</td>
+          <td>{{ payment.handled_by }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

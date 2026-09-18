@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Поддержка t2{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="wrap">
+    <div class="kicker">помощь</div>
+    <h2>Написать в поддержку</h2>
+    <p class="lede">Обращения хранятся в общей базе. Поле «обработано нодой» показывает, какой экземпляр принял запрос.</p>
+    {% if sent %}<div class="notice">Обращение принято. Можно обновить страницу — заявка останется, даже если ответит другая нода.</div>{% endif %}
+    <form class="form" method="post" action="/support">
+      <label>Имя
+        <input name="name" value="{{ subscriber.full_name if subscriber else '' }}" required />
+      </label>
+      <label>Телефон
+        <input name="phone" value="{{ subscriber.phone if subscriber else '' }}" required />
+      </label>
+      <label>Тема
+        <input name="subject" placeholder="Не работает интернет" required />
+      </label>
+      <label>Сообщение
+        <textarea name="message" required></textarea>
+      </label>
+      <button class="btn btn-pink" type="submit">Отправить</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

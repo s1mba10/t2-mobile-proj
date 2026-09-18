@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Какая нода ответила{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="wrap">
+    <div class="kicker">backend identity</div>
+    <h2>Эта страница показывает узел, который ответил</h2>
+    <p class="lede">
+      Обновите страницу несколько раз через порт 8080 — Nginx распределяет запросы
+      между app-1 и app-2. Заголовок <code>X-Backend-Instance</code> дублирует ту же информацию для curl.
+    </p>
+    <div class="grid">
+      <article class="card featured">
+        <span class="pill">сейчас</span>
+        <h3>{{ instance.instance_id }}</h3>
+        <ul class="list">
+          <li>hostname: {{ instance.hostname }}</li>
+          <li>pid: {{ instance.pid }}</li>
+          <li>uptime: {{ instance.uptime_seconds }} с</li>
+          <li>TLS на этом процессе: нет</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h3>Последние попадания</h3>
+        <ul class="list">
+          {% for hit in hits %}
+          <li><b>{{ hit.instance_id }}</b> · {{ hit.path }}</li>
+          {% else %}
+          <li>Пока нет запросов</li>
+          {% endfor %}
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+{% endblock %}

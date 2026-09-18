@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Вход в кабинет t2{% endblock %}
+{% block content %}
+<section class="section">
+  <div class="wrap">
+    <div class="kicker">авторизация</div>
+    <h2>Личный кабинет</h2>
+    <p class="lede">Сессия сохраняется в Redis, общем для app-1 и app-2. Локальные файлы и память процесса не используются.</p>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form class="form" method="post" action="/login">
+      <label>Номер телефона
+        <input name="phone" inputmode="tel" placeholder="+7 900 123-45-67" required />
+      </label>
+      <label>PIN
+        <input name="pin" type="password" maxlength="8" required />
+      </label>
+      <button class="btn btn-pink" type="submit">Войти</button>
+    </form>
+    <div class="demo" style="margin-top: 20px">
+      <strong>Демо-абоненты</strong>
+      <div>+7 900 123-45-67 · PIN 1234 · Иван Петров · «Мой онлайн»</div>
+      <div>+7 900 765-43-21 · PIN 5678 · Анна Соколова · «Безлимит»</div>
+    </div>
+  </div>
+</section>
+{% endblock %}

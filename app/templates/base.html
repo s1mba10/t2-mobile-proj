@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}t2 — другие правила. новый уровень.{% endblock %}</title>
+    <link rel="icon" href="/static/img/logo.svg" />
+    <link rel="stylesheet" href="/static/css/app.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="wrap header-inner">
+        <a class="brand" href="/">
+          <img src="/static/img/logo.svg" alt="t2" />
+        </a>
+        <nav class="nav">
+          <a href="/tariffs" class="{% if request.url.path == '/tariffs' %}active{% endif %}">Тарифы</a>
+          <a href="/coverage" class="{% if request.url.path == '/coverage' %}active{% endif %}">Покрытие</a>
+          <a href="/about" class="{% if request.url.path == '/about' %}active{% endif %}">О компании</a>
+          <a href="/support" class="{% if request.url.path == '/support' %}active{% endif %}">Поддержка</a>
+          <a href="/status" class="{% if request.url.path == '/status' %}active{% endif %}">Нода</a>
+        </nav>
+        <div class="header-actions">
+          {% if subscriber %}
+          <a class="btn btn-ghost" href="/account">Кабинет</a>
+          {% else %}
+          <a class="btn btn-pink" href="/login">Войти</a>
+          {% endif %}
+        </div>
+      </div>
+    </header>
+
+    <main>{% block content %}{% endblock %}</main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-grid">
+        <div>
+          <strong>t2</strong>
+          <p>Учебный портал по мотивам оператора t2 (ООО «Т2 Мобайл»). Не является официальным сайтом компании.</p>
+        </div>
+        <div>
+          <div>Связь, интернет, сервисы</div>
+          <div>HTTP only · TLS на reverse-proxy</div>
+        </div>
+      </div>
+    </footer>
+
+    <div class="instance-bar">
+      <span>Ответ от ноды <b>{{ instance.instance_id }}</b> · host {{ instance.hostname }} · pid {{ instance.pid }}</span>
+      <a href="/status">как это работает</a>
+    </div>
+    <script src="/static/js/app.js"></script>
+  </body>
+</html>
