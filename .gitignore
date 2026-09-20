@@ -25,6 +25,9 @@ htmlcov/
 *.key
 *.crt
 
+# Временные файлы Word и Excel
+~$*
+
 # OS / IDE
 .DS_Store
 Thumbs.db
