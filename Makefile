@@ -1,4 +1,4 @@
-.PHONY: help install dev up down logs test lint fmt demo instance-check
+.PHONY: help install dev up down logs test lint fmt demo instance-check validate
 
 help:
 	@echo "t2-mobile — команды разработки"
@@ -9,6 +9,7 @@ help:
 	@echo "  make test            запустить тесты"
 	@echo "  make demo            показать, что запросы ходят на разные ноды"
 	@echo "  make instance-check  12 запросов к /api/v1/instance"
+	@echo "  make validate        проверить артефакты лабораторных работ"
 
 install:
 	python3 -m venv .venv
@@ -32,6 +33,9 @@ test:
 
 lint:
 	.venv/bin/ruff check app tests
+
+validate:
+	bash scripts/validate-infra.sh
 
 fmt:
 	.venv/bin/ruff check --fix app tests

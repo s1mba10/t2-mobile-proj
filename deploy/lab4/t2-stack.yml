@@ -9,8 +9,10 @@ version: "3.8"
 
 x-app-env: &app-env
   APP_ENV: production
-  SECRET_KEY: "${T2_SECRET:-lab4-secret-change-me}"
-  DATABASE_URL: "postgresql+asyncpg://t2:t2lab@db:5432/t2mobile"
+  SECRET_KEY: "${T2_SECRET:?не задан T2_SECRET}"
+  # В тексте сообщения об ошибке не должно быть символов $ ( ) — compose
+  # разбирает подстановку по ним и подставляет мусор вместо значения.
+  DATABASE_URL: "postgresql+asyncpg://t2:${T2_DB_PASSWORD:?не задан T2_DB_PASSWORD}@db:5432/t2mobile"
   REDIS_URL: "redis://redis:6379/0"
   SESSION_COOKIE_SECURE: "false"
 
@@ -58,7 +60,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: t2
-      POSTGRES_PASSWORD: t2lab
+      POSTGRES_PASSWORD: "${T2_DB_PASSWORD:?задайте T2_DB_PASSWORD}"
       POSTGRES_DB: t2mobile
     volumes:
       - pgdata:/var/lib/postgresql/data

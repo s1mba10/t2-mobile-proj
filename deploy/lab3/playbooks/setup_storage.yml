@@ -4,6 +4,18 @@
   become: true
 
   tasks:
+    - name: Убедиться, что секреты заданы и не остались примерными
+      ansible.builtin.assert:
+        that:
+          - postgres_password is defined
+          - secret_key is defined
+          - "'замените' not in postgres_password"
+          - "'замените' not in secret_key"
+        fail_msg: >-
+          Не заданы postgres_password и secret_key. Создайте group_vars/vault.yml
+          по образцу vault.yml.example и зашифруйте его ansible-vault,
+          либо передайте значения через -e.
+
     - name: Создать каталог хранилища
       ansible.builtin.file:
         path: /opt/t2-storage

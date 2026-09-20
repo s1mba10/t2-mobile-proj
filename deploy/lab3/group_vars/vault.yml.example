@@ -1,0 +1,11 @@
+---
+# Скопируйте файл в vault.yml, подставьте свои значения и зашифруйте:
+#
+#   cp group_vars/vault.yml.example group_vars/vault.yml
+#   ansible-vault encrypt group_vars/vault.yml
+#
+# Дальше плейбуки запускаются с ключом --ask-vault-pass.
+# Файл vault.yml добавлен в .gitignore и в репозиторий не попадёт.
+
+postgres_password: "замените-на-свой-пароль"
+secret_key: "замените-на-длинную-случайную-строку"

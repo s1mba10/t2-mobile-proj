@@ -17,7 +17,16 @@ from app.sessions import RedisSessionStore, record_hit, session_id_from
 class InstanceHeaderMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         started = time.perf_counter()
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception:
+            # Необработанное исключение уходит выше по стеку, и Starlette отдаёт 500
+            # уже мимо этого middleware. Без явного учёта доля ошибок в метриках
+            # всегда выглядела бы нулевой именно при настоящих падениях.
+            observe(request.method, endpoint_label(request.scope), 500,
+                    time.perf_counter() - started)
+            raise
+
         response.headers["X-Backend-Instance"] = instance_id()
         response.headers["X-Backend-Hostname"] = hostname()
         response.headers["X-Backend-TLS"] = "terminated-upstream"

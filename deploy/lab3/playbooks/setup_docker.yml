@@ -19,17 +19,25 @@
         state: directory
         mode: "0755"
 
+    # Ни архитектура, ни дистрибутив не зашиты: виртуальные машины могут быть
+    # как x86_64, так и arm64, а вместо Ubuntu может оказаться Debian.
+    - name: Определить архитектуру пакетов
+      ansible.builtin.command: dpkg --print-architecture
+      register: deb_arch
+      changed_when: false
+
     - name: Загрузить GPG-ключ Docker
       ansible.builtin.get_url:
-        url: https://download.docker.com/linux/ubuntu/gpg
+        url: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
         dest: /etc/apt/keyrings/docker.asc
         mode: "0644"
 
     - name: Подключить репозиторий Docker
       ansible.builtin.apt_repository:
         repo: >-
-          deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc]
-          https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+          deb [arch={{ deb_arch.stdout }} signed-by=/etc/apt/keyrings/docker.asc]
+          https://download.docker.com/linux/{{ ansible_distribution | lower }}
+          {{ ansible_distribution_release }} stable
         filename: docker
         state: present
 

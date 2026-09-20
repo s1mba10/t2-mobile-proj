@@ -77,12 +77,19 @@
       register: probe
       loop: "{{ range(1, 7) | list }}"
       changed_when: false
+      failed_when: false
 
     - name: Показать, как распределились запросы
       ansible.builtin.debug:
         msg: >-
           Метод {{ balance_method }}:
-          {{ probe.results | map(attribute='content') | map('from_json') | map(attribute='instance_id') | list }}
+          {{ probe.results
+             | selectattr('status', 'defined')
+             | selectattr('status', 'equalto', 200)
+             | map(attribute='content')
+             | map('from_json')
+             | map(attribute='instance_id')
+             | list }}
 
   handlers:
     - name: Перезагрузить Nginx

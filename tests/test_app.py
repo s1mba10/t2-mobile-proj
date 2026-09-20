@@ -110,3 +110,19 @@ def test_metrics_collapse_path_parameters(client):
 
     assert 'endpoint="/api/v1/coverage/probe/{city}"' in body
     assert "Казань" not in body
+
+
+def test_unhandled_exception_counted_as_server_error(client):
+    """Падение обработчика должно попадать в метрики, иначе доля ошибок всегда нулевая."""
+    from starlette.testclient import TestClient
+
+    @client.app.get("/__boom__")
+    async def _boom():
+        raise RuntimeError("проверка учёта падений")
+
+    raw = TestClient(client.app, raise_server_exceptions=False)
+    assert raw.get("/__boom__").status_code == 500
+
+    body = client.get("/api/metrics").text
+    assert 'endpoint="/__boom__"' in body
+    assert 'status="500"' in body

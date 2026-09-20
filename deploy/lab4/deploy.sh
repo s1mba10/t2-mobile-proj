@@ -8,8 +8,26 @@ STACK="${STACK:-t2}"
 REGISTRY="${REGISTRY:-127.0.0.1:5000}"
 IMAGE="${IMAGE:-$REGISTRY/t2-mobile:lab4}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+SECRETS_FILE="${SECRETS_FILE:-$REPO_ROOT/deploy/lab4/.t2-secrets}"
 
 step() { printf '\n==> %s\n' "$1"; }
+
+# Секреты не лежат в репозитории: при первом запуске генерируются
+# и сохраняются локально, при последующих переиспользуются.
+if [ -f "$SECRETS_FILE" ]; then
+  # shellcheck disable=SC1090
+  . "$SECRETS_FILE"
+else
+  umask 077
+  {
+    echo "export T2_DB_PASSWORD=$(openssl rand -hex 16)"
+    echo "export T2_SECRET=$(openssl rand -hex 32)"
+  } > "$SECRETS_FILE"
+  # shellcheck disable=SC1090
+  . "$SECRETS_FILE"
+  echo "Секреты сгенерированы и сохранены в $SECRETS_FILE"
+fi
+export T2_DB_PASSWORD T2_SECRET
 
 step "Проверяю, что узел — manager"
 docker node ls >/dev/null

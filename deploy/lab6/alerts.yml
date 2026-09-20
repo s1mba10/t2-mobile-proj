@@ -47,8 +47,11 @@ groups:
         annotations:
           summary: "Экземпляр портала {{ $labels.instance }} не отдаёт метрики"
 
+      # or vector(0) обязателен: если живых экземпляров не осталось совсем,
+      # count() по пустому множеству возвращает пустоту, а не ноль, и правило
+      # молчит ровно в той ситуации, ради которой написано.
       - alert: TooFewAppInstances
-        expr: count(up{job="t2_app"} == 1) < 2
+        expr: (count(up{job="t2_app"} == 1) or vector(0)) < 2
         for: 2m
         labels:
           severity: critical

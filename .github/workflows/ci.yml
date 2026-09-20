@@ -19,3 +19,19 @@ jobs:
         run: ruff check app tests
       - name: Tests
         run: pytest -q
+
+  infra:
+    # Проверяет артефакты лабораторных работ: плейбуки, конфигурацию балансировщика
+    # на тех версиях nginx, что стоят на виртуальных машинах, правила Prometheus
+    # и файлы стеков. Без этой проверки в репозиторий однажды уехала директива,
+    # которой нет в nginx из состава Ubuntu.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install tooling
+        run: pip install ansible jinja2 pyyaml
+      - name: Validate infrastructure artifacts
+        run: bash scripts/validate-infra.sh

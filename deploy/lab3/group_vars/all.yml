@@ -36,5 +36,8 @@ enable_l7_split: false
 # Доступы к общему хранилищу.
 postgres_db: t2mobile
 postgres_user: t2
-postgres_password: t2lab
-secret_key: change-me-in-lab
+
+# postgres_password и secret_key намеренно НЕ лежат здесь: этот файл попадает
+# в репозиторий. Значения берутся из зашифрованного group_vars/vault.yml,
+# который создаётся один раз командой из README и в git не уходит.
+# Для разовой проверки можно передать их через -e.

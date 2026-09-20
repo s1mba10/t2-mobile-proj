@@ -39,3 +39,10 @@ tmp/
 *.db
 *.sqlite3
 data/*.sqlite3
+
+# Артефакты локальных проверок
+build/
+
+# Секреты лабораторных работ
+deploy/lab3/group_vars/vault.yml
+deploy/lab4/.t2-secrets

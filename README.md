@@ -21,6 +21,7 @@
 
 | Работа | Тема | Где лежит |
 |---|---|---|
+| №1 | Реестр рисков | [`practicals/pr1/`](practicals/pr1/) |
 | №2 | Веб-приложение за балансировщиком | корень репозитория |
 | №3 | Балансировка Nginx через Ansible | [`deploy/lab3/`](deploy/lab3/) |
 | №4 | Docker Swarm | [`deploy/lab4/`](deploy/lab4/) |
@@ -101,6 +102,13 @@ make dev
 ```bash
 make test
 make lint
+```
+
+Проверка артефактов лабораторных работ без виртуальных машин: плейбуки, конфигурация
+балансировщика на трёх версиях nginx, правила Prometheus и файлы стеков.
+
+```bash
+bash scripts/validate-infra.sh
 ```
 
 ## Полезные URL
