@@ -60,3 +60,30 @@ def test_status_page_identifies_node(client):
     response = client.get("/status")
     assert response.status_code == 200
     assert "test-node" in response.text
+
+
+async def test_second_node_startup_does_not_duplicate_data(client):
+    """Повторная подготовка схемы — это старт второй ноды на той же БД."""
+    from app.main import prepare_schema
+
+    await prepare_schema()
+    await prepare_schema()
+
+    tariffs = client.get("/api/v1/tariffs").json()
+    assert len(tariffs) == 6
+    assert len({item["slug"] for item in tariffs}) == 6
+
+
+async def test_dependency_wait_retries_until_ready():
+    """Нода ждёт хранилище, а не падает на первой ошибке подключения."""
+    from app.main import _wait_for
+
+    attempts = {"n": 0}
+
+    async def flaky() -> None:
+        attempts["n"] += 1
+        if attempts["n"] < 3:
+            raise ConnectionRefusedError("storage is still booting")
+
+    await _wait_for("Тестовое хранилище", flaky)
+    assert attempts["n"] == 3

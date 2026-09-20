@@ -14,6 +14,8 @@
 | Сессии не в памяти и не в файлах | Redis, общий для всех инстансов |
 | Несколько экземпляров за балансировщиком | `docker compose up` поднимает `app-1`, `app-2` и Nginx на `:8080` |
 | Асинхронные запросы | FastAPI/async SQLAlchemy/Redis, `GET /api/v1/coverage/scan`, SSE `/api/v1/events` |
+| Одновременный старт нод | Схема и демо-данные создаются под advisory-блокировкой PostgreSQL, старт ждёт БД и Redis с повторами |
+| Быстрый отказ ноды | `proxy_connect_timeout 2s` + `proxy_next_upstream`: переключение на живую ноду за ~2 с |
 
 Лабораторная №3 (Nginx на отдельных VM, DNS, TLS, Ansible) **сюда не входит**. Короткий задел лежит в `deploy/lab3/`.
 
@@ -32,8 +34,19 @@ docker compose up --build
 
 ```bash
 make instance-check
-# или
+# или произвольное число запросов
+./scripts/show-instances.sh http://localhost:8080/api/v1/instance 20
+# или одним запросом
 curl -sI http://localhost:8080/status | grep -i x-backend
+```
+
+Проверка отказоустойчивости: остановите одну ноду и обновите кабинет — сессия и баланс
+останутся на месте, запросы уйдут на живую ноду.
+
+```bash
+docker compose stop app-1
+./scripts/show-instances.sh
+docker compose start app-1
 ```
 
 Остановка:

@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     session_ttl_seconds: int = 60 * 60 * 24 * 7
     session_cookie_secure: bool = False
 
+    # Ожидание PostgreSQL и Redis на старте: в Swarm порядок запуска не гарантирован.
+    startup_wait_attempts: int = 30
+    startup_wait_delay_seconds: float = 2.0
+
 
 @lru_cache
 def get_settings() -> Settings:
