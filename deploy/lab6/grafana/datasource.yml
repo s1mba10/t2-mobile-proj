@@ -1,0 +1,11 @@
+# Автоматическое подключение источника данных: кликать в интерфейсе не нужно.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: t2-prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true

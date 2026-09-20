@@ -1,0 +1,91 @@
+---
+- name: Установить и настроить Nginx как балансировщик
+  hosts: balancer
+  become: true
+
+  tasks:
+    - name: Установить Nginx и openssl
+      ansible.builtin.apt:
+        name:
+          - nginx
+          - openssl
+        state: present
+        update_cache: true
+
+    - name: Создать каталог для сертификатов
+      ansible.builtin.file:
+        path: "{{ tls_cert_path | dirname }}"
+        state: directory
+        mode: "0750"
+      when: enable_tls
+
+    - name: Выпустить самоподписанный сертификат
+      ansible.builtin.command:
+        cmd: >-
+          openssl req -x509 -nodes -newkey rsa:2048
+          -keyout {{ tls_key_path }}
+          -out {{ tls_cert_path }}
+          -days 365
+          -subj "/C=RU/ST=Moscow/L=Moscow/O=t2 lab/CN={{ tls_common_name }}"
+          -addext "subjectAltName=DNS:{{ tls_common_name }},IP:{{ hostvars[inventory_hostname]['ansible_host'] }}"
+        creates: "{{ tls_cert_path }}"
+      when: enable_tls
+
+    - name: Ограничить доступ к приватному ключу
+      ansible.builtin.file:
+        path: "{{ tls_key_path }}"
+        mode: "0600"
+      when: enable_tls
+
+    - name: Создать каталог кэша
+      ansible.builtin.file:
+        path: "{{ cache_path }}"
+        state: directory
+        owner: www-data
+        mode: "0750"
+      when: enable_cache
+
+    - name: Разложить конфигурацию балансировщика из шаблона
+      ansible.builtin.template:
+        src: ../templates/nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+        mode: "0644"
+        backup: true
+        validate: nginx -t -c %s
+      notify: Перезагрузить Nginx
+
+    - name: Включить и запустить Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+
+    - name: Проверить, что балансировщик отвечает
+      ansible.builtin.uri:
+        url: "http://127.0.0.1/lb-health"
+        return_content: true
+      register: lb_health
+      until: lb_health.status == 200
+      retries: 10
+      delay: 3
+
+    - name: Собрать ответы бэкендов через балансировщик
+      ansible.builtin.uri:
+        url: "{{ 'https' if enable_tls else 'http' }}://127.0.0.1/api/v1/instance"
+        validate_certs: false
+        return_content: true
+      register: probe
+      loop: "{{ range(1, 7) | list }}"
+      changed_when: false
+
+    - name: Показать, как распределились запросы
+      ansible.builtin.debug:
+        msg: >-
+          Метод {{ balance_method }}:
+          {{ probe.results | map(attribute='content') | map('from_json') | map(attribute='instance_id') | list }}
+
+  handlers:
+    - name: Перезагрузить Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded

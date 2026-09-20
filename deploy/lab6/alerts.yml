@@ -1,0 +1,67 @@
+# Правила оповещений. Закрывают риски 9 и 10 реестра из практической работы №1:
+# переполнение диска и позднее обнаружение инцидента.
+groups:
+  - name: t2-infrastructure
+    rules:
+      - alert: NodeDown
+        expr: up{job="node_exporter"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Нода {{ $labels.instance }} не отвечает"
+          description: "Экспортер метрик недоступен больше минуты."
+
+      # Фильтр по типу файловой системы, а не по mountpoint="/": на части систем
+      # корень с таким именем вообще не экспортируется, и правило молча не срабатывает.
+      - alert: DiskAlmostFull
+        expr: |
+          100 - (
+            node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs|squashfs|vfat|overlay|virtiofs"} * 100
+            /
+            node_filesystem_size_bytes{fstype!~"tmpfs|fuse.lxcfs|squashfs|vfat|overlay|virtiofs"}
+          ) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Диск {{ $labels.mountpoint }} на {{ $labels.instance }} заполнен более чем на 80%"
+          description: "Нужно почистить журналы и неиспользуемые образы."
+
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Память на {{ $labels.instance }} занята более чем на 90%"
+
+  - name: t2-application
+    rules:
+      - alert: AppInstanceDown
+        expr: up{job="t2_app"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Экземпляр портала {{ $labels.instance }} не отдаёт метрики"
+
+      - alert: TooFewAppInstances
+        expr: count(up{job="t2_app"} == 1) < 2
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Живых экземпляров портала меньше двух"
+          description: "Балансировать нечего, отказ одной ноды остановит сервис."
+
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(t2_http_requests_total{status=~"5.."}[5m]))
+          / sum(rate(t2_http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Более 5% запросов завершаются ошибкой сервера"

@@ -1,0 +1,150 @@
+# ВНИМАНИЕ: файл создаётся Ansible из templates/nginx.conf.j2.
+# Правки, сделанные на сервере руками, будут затёрты при следующем запуске playbook.
+#
+# Метод балансировки: {{ balance_method }}
+# Бэкенды подставляются автоматически из группы [webservers] инвентаря.
+
+user www-data;
+worker_processes {{ nginx_worker_processes }};
+pid /run/nginx.pid;
+error_log /var/log/nginx/error.log warn;
+include /etc/nginx/modules-enabled/*.conf;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    sendfile on;
+    keepalive_timeout 65;
+
+    # В журнал пишется адрес бэкенда, который реально обработал запрос.
+    # Это основной материал для отчёта: видно, как чередуются ноды.
+    log_format balanced '$remote_addr -> $upstream_addr "$request" '
+                        '$status ${upstream_response_time}s method={{ balance_method }}';
+    access_log /var/log/nginx/access.log balanced;
+
+{% if enable_cache %}
+    proxy_cache_path {{ cache_path }} levels=1:2 keys_zone=t2_cache:10m
+                     max_size=1g inactive=60m use_temp_path=off;
+{% endif %}
+
+    upstream t2_backend {
+{% if balance_method == 'least_conn' %}
+        # Запрос уходит на бэкенд с наименьшим числом активных соединений.
+        least_conn;
+{% elif balance_method == 'ip_hash' %}
+        # Клиент закрепляется за бэкендом по своему IP-адресу.
+        ip_hash;
+{% elif balance_method == 'cookie_hash' %}
+        # Аналог sticky sessions для открытой версии nginx: привязка по cookie сессии.
+        # Директива sticky доступна только в NGINX Plus.
+        hash $cookie_t2_session consistent;
+{% else %}
+        # round_robin — режим по умолчанию, отдельной директивы не требует.
+{% endif %}
+{% for host in groups['webservers'] %}
+        server {{ hostvars[host]['ansible_host'] }}:{{ app_port }}{% if balance_method == 'weighted' %} weight={{ hostvars[host]['nginx_weight'] | default(1) }}{% endif %} max_fails={{ nginx_max_fails }} fail_timeout={{ nginx_fail_timeout }};
+{% endfor %}
+    }
+
+{% if enable_l7_split %}
+    # L7: решение о маршруте принимается по содержимому запроса (URI).
+    # Оба upstream содержат все ноды, различается только стратегия выбора.
+    upstream t2_api {
+        least_conn;
+{% for host in groups['webservers'] %}
+        server {{ hostvars[host]['ansible_host'] }}:{{ app_port }} max_fails={{ nginx_max_fails }} fail_timeout={{ nginx_fail_timeout }};
+{% endfor %}
+    }
+{% endif %}
+
+    proxy_connect_timeout {{ proxy_connect_timeout }};
+    proxy_read_timeout {{ proxy_read_timeout }};
+    proxy_next_upstream error timeout http_502 http_503 http_504;
+    proxy_next_upstream_tries 2;
+    proxy_next_upstream_timeout 5s;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+{% if enable_tls %}
+    server {
+        listen 80;
+        server_name _;
+
+        # Единственное исключение из редиректа: проверка доступности балансировщика.
+        location = /lb-health {
+            access_log off;
+            return 200 "balancer ok\n";
+        }
+
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        http2 on;
+        server_name {{ tls_common_name }};
+
+        ssl_certificate {{ tls_cert_path }};
+        ssl_certificate_key {{ tls_key_path }};
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+        ssl_session_timeout 1h;
+{% else %}
+    server {
+        listen 80;
+        server_name _;
+{% endif %}
+
+        # Внутренняя статистика nginx для отчёта.
+        location = /nginx-status {
+            stub_status;
+            allow 127.0.0.1;
+            deny all;
+        }
+
+        location = /lb-health {
+            access_log off;
+            return 200 "balancer ok\n";
+        }
+
+        # Поток событий: буферизация выключена, длинный read timeout.
+        location /api/v1/events {
+            proxy_pass http://t2_backend;
+            proxy_http_version 1.1;
+            proxy_buffering off;
+            proxy_cache off;
+            proxy_read_timeout 1h;
+        }
+
+{% if enable_l7_split %}
+        # Запросы к API уходят на upstream t2_api, всё остальное — на t2_backend.
+        location /api/ {
+            proxy_pass http://t2_api;
+            proxy_http_version 1.1;
+        }
+{% endif %}
+
+        location / {
+            proxy_pass http://t2_backend;
+            proxy_http_version 1.1;
+{% if enable_cache %}
+            proxy_cache t2_cache;
+            proxy_cache_valid 200 302 10m;
+            proxy_cache_valid 404 1m;
+            proxy_cache_bypass $cookie_t2_session;
+            proxy_no_cache $cookie_t2_session;
+            add_header X-Cache-Status $upstream_cache_status;
+{% endif %}
+        }
+    }
+}

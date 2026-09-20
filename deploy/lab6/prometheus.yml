@@ -1,0 +1,50 @@
+# Конфигурация Prometheus для практической работы №6.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: t2-swarm
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  # Сам Prometheus.
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # Метрики узлов кластера: процессор, память, диск, сеть.
+  #
+  # Используется обнаружение через DNS Swarm: имя tasks.<сервис> резолвится
+  # в адреса всех задач сервиса. Node-exporter запущен в режиме global,
+  # то есть по одному экземпляру на каждой ноде, и список целей обновляется
+  # сам при добавлении или выводе ноды из кластера.
+  - job_name: node_exporter
+    dns_sd_configs:
+      - names: ["tasks.node-exporter"]
+        type: A
+        port: 9100
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+
+  # Вариант из методических указаний: жёстко прописанные адреса.
+  # Работает так же, но требует правки файла при изменении состава кластера.
+  #
+  # - job_name: node_exporter
+  #   static_configs:
+  #     - targets:
+  #       - "192.168.xx.11:9100"
+  #       - "192.168.xx.12:9100"
+  #       - "192.168.xx.13:9100"
+
+  # Метрики самого портала t2. Каждая серия помечена идентификатором ноды,
+  # поэтому в Grafana видно, как балансировщик распределяет запросы.
+  # Требует, чтобы стек из работы №4 был развёрнут.
+  - job_name: t2_app
+    metrics_path: /api/metrics
+    dns_sd_configs:
+      - names: ["tasks.t2_app"]
+        type: A
+        port: 8000

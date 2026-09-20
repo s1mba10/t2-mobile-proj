@@ -15,6 +15,7 @@ from app.api import router as api_router
 from app.config import get_settings
 from app.db import dispose_engine, get_engine, get_sessionmaker
 from app.instance import instance_id
+from app.metrics import mark_instance_up
 from app.middleware import InstanceHeaderMiddleware, SessionMiddleware
 from app.models import Base
 from app.redis_client import close_redis, get_redis
@@ -91,6 +92,7 @@ async def prepare_schema() -> None:
 async def lifespan(_app: FastAPI):
     await wait_for_dependencies()
     await prepare_schema()
+    mark_instance_up()
     logger.info("Нода %s готова принимать запросы", instance_id())
     yield
     await close_redis()

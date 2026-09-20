@@ -1,0 +1,50 @@
+---
+- name: Развернуть экземпляры приложения на веб-нодах
+  hosts: webservers
+  become: true
+
+  tasks:
+    - name: Установить git
+      ansible.builtin.apt:
+        name: git
+        state: present
+        update_cache: true
+
+    - name: Получить исходный код приложения
+      ansible.builtin.git:
+        repo: "{{ app_git_url }}"
+        dest: /opt/t2-mobile
+        version: main
+        force: true
+
+    - name: Создать каталог запуска приложения
+      ansible.builtin.file:
+        path: /opt/t2-mobile-app
+        state: directory
+        mode: "0755"
+
+    - name: Положить файл compose для приложения
+      ansible.builtin.template:
+        src: ../templates/app-compose.yml.j2
+        dest: /opt/t2-mobile-app/docker-compose.yml
+        mode: "0644"
+
+    - name: Собрать образ и запустить экземпляр
+      ansible.builtin.command:
+        cmd: docker compose up -d --build
+        chdir: /opt/t2-mobile-app
+      register: app_up
+      changed_when: "'Started' in app_up.stderr or 'Recreated' in app_up.stderr"
+
+    - name: Проверить, что экземпляр отвечает и называет себя
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ app_port }}/api/v1/instance"
+        return_content: true
+      register: instance_check
+      until: instance_check.status == 200
+      retries: 30
+      delay: 5
+
+    - name: Показать идентификатор ноды
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} отвечает как {{ (instance_check.content | from_json).instance_id }}"

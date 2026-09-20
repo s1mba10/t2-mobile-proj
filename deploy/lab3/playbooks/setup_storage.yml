@@ -1,0 +1,35 @@
+---
+- name: Развернуть общее хранилище PostgreSQL и Redis
+  hosts: storage
+  become: true
+
+  tasks:
+    - name: Создать каталог хранилища
+      ansible.builtin.file:
+        path: /opt/t2-storage
+        state: directory
+        mode: "0755"
+
+    - name: Положить файл compose для хранилища
+      ansible.builtin.template:
+        src: ../templates/storage-compose.yml.j2
+        dest: /opt/t2-storage/docker-compose.yml
+        mode: "0644"
+      register: storage_compose
+
+    - name: Поднять PostgreSQL и Redis
+      ansible.builtin.command:
+        cmd: docker compose up -d
+        chdir: /opt/t2-storage
+      register: storage_up
+      changed_when: "'Started' in storage_up.stderr or 'Created' in storage_up.stderr"
+
+    - name: Дождаться готовности PostgreSQL
+      ansible.builtin.command:
+        cmd: docker compose exec -T db pg_isready -U {{ postgres_user }} -d {{ postgres_db }}
+        chdir: /opt/t2-storage
+      register: pg_ready
+      until: pg_ready.rc == 0
+      retries: 24
+      delay: 5
+      changed_when: false

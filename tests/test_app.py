@@ -87,3 +87,26 @@ async def test_dependency_wait_retries_until_ready():
 
     await _wait_for("Тестовое хранилище", flaky)
     assert attempts["n"] == 3
+
+
+def test_metrics_endpoint_labels_by_node(client):
+    """Метрики помечены идентификатором ноды — по ним видно распределение запросов."""
+    client.get("/api/health")
+    response = client.get("/api/metrics")
+
+    assert response.status_code == 200
+    assert "text/plain" in response.headers["content-type"]
+    body = response.text
+    assert 't2_instance_info{hostname=' in body
+    assert 'instance_id="test-node"' in body
+    assert "t2_http_requests_total" in body
+    assert 'endpoint="/api/health"' in body
+
+
+def test_metrics_collapse_path_parameters(client):
+    """Город в пути сворачивается в шаблон, иначе растёт число временных рядов."""
+    client.get("/api/v1/coverage/probe/Казань")
+    body = client.get("/api/metrics").text
+
+    assert 'endpoint="/api/v1/coverage/probe/{city}"' in body
+    assert "Казань" not in body

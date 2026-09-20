@@ -1,0 +1,7 @@
+---
+# Полное развёртывание практической работы №3 одной командой:
+#   ansible-playbook playbooks/site.yml
+- ansible.builtin.import_playbook: setup_docker.yml
+- ansible.builtin.import_playbook: setup_storage.yml
+- ansible.builtin.import_playbook: setup_webservers.yml
+- ansible.builtin.import_playbook: setup_loadbalancer.yml

@@ -1,0 +1,40 @@
+---
+# Метод балансировки. Меняется без правки шаблона:
+#   ansible-playbook playbooks/setup_loadbalancer.yml -e balance_method=least_conn
+# Допустимые значения: round_robin, least_conn, ip_hash, weighted, cookie_hash
+balance_method: round_robin
+
+# Порт, на котором приложение слушает HTTP на веб-нодах.
+app_port: 8000
+
+# Образ приложения. Собирается прямо из репозитория, если локально не найден.
+app_image: t2-mobile:lab3
+app_git_url: https://github.com/s1mba10/t2-mobile-proj.git
+
+# Пассивные проверки состояния бэкендов.
+nginx_max_fails: 3
+nginx_fail_timeout: 15s
+nginx_worker_processes: 1
+
+# Быстрый увод трафика с упавшей ноды.
+proxy_connect_timeout: 2s
+proxy_read_timeout: 30s
+
+# TLS терминируется здесь и только здесь. Приложение о сертификатах не знает.
+enable_tls: true
+tls_cert_path: /etc/nginx/ssl/t2.crt
+tls_key_path: /etc/nginx/ssl/t2.key
+tls_common_name: t2.local
+
+# Кэширование ответов на балансировщике.
+enable_cache: false
+cache_path: /var/cache/nginx/t2
+
+# Маршрутизация по URI (L7): API и витрина разводятся на разные upstream.
+enable_l7_split: false
+
+# Доступы к общему хранилищу.
+postgres_db: t2mobile
+postgres_user: t2
+postgres_password: t2lab
+secret_key: change-me-in-lab

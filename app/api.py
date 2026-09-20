@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.db import get_db
 from app.instance import instance_info
+from app.metrics import render as render_metrics
 from app.redis_client import get_redis
 from app.schemas import CoverageProbeOut, InstanceOut, LoginIn, TariffOut, TicketIn, TopUpIn
 from app.services import (
@@ -42,6 +43,13 @@ async def ready(db: AsyncSession = Depends(get_db)) -> dict:
     if not pong:
         raise HTTPException(status_code=503, detail="redis unavailable")
     return {"status": "ready", **instance_info()}
+
+
+@router.get("/metrics", include_in_schema=False)
+async def metrics() -> Response:
+    """Метрики для Prometheus. Каждая серия помечена идентификатором ноды."""
+    payload, content_type = render_metrics()
+    return Response(content=payload, media_type=content_type)
 
 
 @router.get("/v1/instance", response_model=InstanceOut)

@@ -17,7 +17,18 @@
 | Одновременный старт нод | Схема и демо-данные создаются под advisory-блокировкой PostgreSQL, старт ждёт БД и Redis с повторами |
 | Быстрый отказ ноды | `proxy_connect_timeout 2s` + `proxy_next_upstream`: переключение на живую ноду за ~2 с |
 
-Лабораторная №3 (Nginx на отдельных VM, DNS, TLS, Ansible) **сюда не входит**. Короткий задел лежит в `deploy/lab3/`.
+## Практические работы курса
+
+| Работа | Тема | Где лежит |
+|---|---|---|
+| №2 | Веб-приложение за балансировщиком | корень репозитория |
+| №3 | Балансировка Nginx через Ansible | [`deploy/lab3/`](deploy/lab3/) |
+| №4 | Docker Swarm | [`deploy/lab4/`](deploy/lab4/) |
+| №5 | Portainer | [`deploy/lab5/`](deploy/lab5/) |
+| №6 | Prometheus и Grafana | [`deploy/lab6/`](deploy/lab6/) |
+
+У каждой работы свой README с командами запуска, объяснением решений и списком того,
+что приложить к отчёту.
 
 ## Быстрый старт
 
@@ -68,6 +79,7 @@ docker compose down
 - Личный кабинет: баланс, пакеты, пополнение
 - JSON API: `/api/docs`
 - Идентичность инстанса: `/api/v1/instance`, `/status`
+- Метрики Prometheus: `/api/metrics`, каждая серия помечена `instance_id`
 
 Стек: FastAPI, Jinja2, PostgreSQL, Redis, Nginx (только локальный HTTP-прокси), Docker Compose.
 
@@ -98,7 +110,12 @@ make lint
 - http://localhost:8080/api/health — liveness
 - http://localhost:8080/api/ready — PostgreSQL + Redis
 - http://localhost:8080/api/docs — OpenAPI
+- http://localhost:8080/api/metrics — метрики Prometheus с меткой ноды
 
 ## Как это будут стыковать в работе №3
 
 На VM `192.168.xx.12` и `.13` запускается этот сервис на `:8000`. На `.11` ставится Nginx, `upstream` указывает на обе ноды, TLS терминируется на балансировщике. Health-check балансировщика: `GET /api/health`.
+
+Всё это автоматизировано в [`deploy/lab3/`](deploy/lab3/): инвентарь, плейбуки и шаблон
+конфигурации, который подставляет адреса бэкендов сам и переключает метод балансировки
+одной переменной.

@@ -1,0 +1,101 @@
+# Стек практической работы №4: три реплики веб-сервера по одной на ноду
+# и одна реплика базы данных, закреплённая за конкретной нодой.
+#
+#   docker stack deploy -c t2-stack.yml t2
+#
+# Переменные окружения позволяют менять параметры не трогая файл:
+#   T2_IMAGE, T2_REPLICAS, T2_MAX_PER_NODE, T2_PORT, T2_DB_CONSTRAINT
+version: "3.8"
+
+x-app-env: &app-env
+  APP_ENV: production
+  SECRET_KEY: "${T2_SECRET:-lab4-secret-change-me}"
+  DATABASE_URL: "postgresql+asyncpg://t2:t2lab@db:5432/t2mobile"
+  REDIS_URL: "redis://redis:6379/0"
+  SESSION_COOKIE_SECURE: "false"
+
+services:
+  app:
+    image: ${T2_IMAGE:-127.0.0.1:5000/t2-mobile:lab4}
+    environment:
+      <<: *app-env
+      # Шаблон Swarm: каждая задача узнаёт имя своей ноды и номер слота.
+      # Благодаря этому страница /status показывает, какая нода ответила.
+      INSTANCE_ID: "{{.Node.Hostname}}-{{.Task.Slot}}"
+    networks:
+      - t2net
+    ports:
+      - target: 8000
+        published: ${T2_PORT:-80}
+        protocol: tcp
+        mode: ingress
+    deploy:
+      replicas: ${T2_REPLICAS:-3}
+      placement:
+        # Не больше одной реплики на ноду: три реплики разъезжаются по трём нодам.
+        max_replicas_per_node: ${T2_MAX_PER_NODE:-1}
+      update_config:
+        parallelism: 1
+        delay: 10s
+        # Именно stop-first, а не start-first. При start-first Swarm пытается поднять
+        # новую задачу до остановки старой, и вместе с max_replicas_per_node это даёт
+        # вечный Pending с ошибкой "no suitable node (max replicas per node limit exceed)":
+        # для второй задачи на той же ноде просто нет места. Проверено на практике.
+        order: stop-first
+        failure_action: rollback
+      rollback_config:
+        parallelism: 1
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          memory: 512M
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: t2
+      POSTGRES_PASSWORD: t2lab
+      POSTGRES_DB: t2mobile
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - t2net
+    deploy:
+      replicas: 1
+      placement:
+        # База поднимается только там, где лежит её том.
+        # Метка ставится командой:
+        #   docker node update --label-add t2_role=storage <нода>
+        # Альтернативы: node.hostname == node1  или  node.role == manager
+        constraints:
+          - "${T2_DB_CONSTRAINT:-node.labels.t2_role == storage}"
+      restart_policy:
+        condition: on-failure
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    networks:
+      - t2net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - "${T2_DB_CONSTRAINT:-node.labels.t2_role == storage}"
+      restart_policy:
+        condition: on-failure
+
+networks:
+  t2net:
+    driver: overlay
+    attachable: true
+
+volumes:
+  pgdata:
+  redisdata:
