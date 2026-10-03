@@ -1,0 +1,129 @@
+# Стенд практической работы №3 целиком: два балансировщика с плавающим адресом
+# и две активные ноды приложения. Адреса совпадают с таблицей адресации отчёта.
+name: pr3-stand
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: t2
+      POSTGRES_PASSWORD: t2lab
+      POSTGRES_DB: t2mobile
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U t2 -d t2mobile"]
+      interval: 5s
+      retries: 12
+    networks:
+      t2net:
+        ipv4_address: 192.168.100.31
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 12
+    networks:
+      t2net:
+        ipv4_address: 192.168.100.32
+
+  backend1:
+    build:
+      context: ../../..
+    environment:
+      APP_ENV: production
+      INSTANCE_ID: golubintsev
+      SECRET_KEY: pr3-stand-secret
+      DATABASE_URL: postgresql+asyncpg://t2:t2lab@192.168.100.31:5432/t2mobile
+      REDIS_URL: redis://192.168.100.32:6379/0
+      SESSION_COOKIE_SECURE: "false"
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    networks:
+      t2net:
+        ipv4_address: 192.168.100.21
+        aliases: [golubintsev.ivbo21.local]
+
+  backend2:
+    build:
+      context: ../../..
+    environment:
+      APP_ENV: production
+      INSTANCE_ID: golubintsev-b
+      SECRET_KEY: pr3-stand-secret
+      DATABASE_URL: postgresql+asyncpg://t2:t2lab@192.168.100.31:5432/t2mobile
+      REDIS_URL: redis://192.168.100.32:6379/0
+      SESSION_COOKIE_SECURE: "false"
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    networks:
+      t2net:
+        ipv4_address: 192.168.100.22
+        aliases: [golubintsev-b.ivbo21.local]
+
+  lb1:
+    build:
+      context: .
+      dockerfile: Dockerfile.lb
+    hostname: shevkoplyas-lb
+    cap_add: [NET_ADMIN, NET_BROADCAST, NET_RAW]
+    volumes:
+      - ../haproxy/haproxy.cfg:/etc/haproxy/haproxy.cfg:ro
+      - ../certs:/etc/haproxy/certs:ro
+      - ../keepalived/keepalived-master.conf:/etc/keepalived/keepalived.conf:ro
+      - ../keepalived/check_haproxy.sh:/etc/keepalived/check_haproxy.sh:ro
+    depends_on: [backend1, backend2]
+    networks:
+      t2net:
+        ipv4_address: 192.168.100.11
+        aliases: [shevkoplyas-lb.ivbo21.local]
+
+  lb2:
+    build:
+      context: .
+      dockerfile: Dockerfile.lb
+    hostname: golubintsev-lb
+    cap_add: [NET_ADMIN, NET_BROADCAST, NET_RAW]
+    volumes:
+      - ../haproxy/haproxy.cfg:/etc/haproxy/haproxy.cfg:ro
+      - ../certs:/etc/haproxy/certs:ro
+      - ../keepalived/keepalived-backup.conf:/etc/keepalived/keepalived.conf:ro
+      - ../keepalived/check_haproxy.sh:/etc/keepalived/check_haproxy.sh:ro
+    depends_on: [backend1, backend2]
+    networks:
+      t2net:
+        ipv4_address: 192.168.100.12
+        aliases: [golubintsev-lb.ivbo21.local]
+
+  # Шлюз для демонстрации с ноутбука: пробрасывает виртуальный адрес стенда
+  # на localhost. На реальном стенде этой роли нет — там клиент стоит в той же
+  # сети и обращается к VIP напрямую.
+  gw:
+    image: alpine:3.20
+    command:
+      - sh
+      - -c
+      - |
+        apk add --no-cache socat >/dev/null
+        socat TCP-LISTEN:443,fork,reuseaddr TCP:192.168.100.100:443 &
+        socat TCP-LISTEN:8043,fork,reuseaddr TCP:192.168.100.100:8043 &
+        socat TCP-LISTEN:80,fork,reuseaddr TCP:192.168.100.100:80 &
+        wait
+    ports:
+      - "443:443"
+      - "8043:8043"
+      - "8080:80"
+    depends_on: [lb1, lb2]
+    networks:
+      t2net:
+        ipv4_address: 192.168.100.5
+
+networks:
+  t2net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.100.0/24
