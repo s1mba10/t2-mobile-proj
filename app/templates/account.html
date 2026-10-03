@@ -24,7 +24,7 @@
       </article>
       <article class="card">
         <h3>Пополнить баланс</h3>
-        <p class="muted">Платёж пишется в PostgreSQL. Если app-1 остановится, app-2 отдаст тот же баланс.</p>
+        <p class="muted">Платёж пишется в общую PostgreSQL. Если узел, принявший платёж, остановится, баланс отдаст любой другой.</p>
         <form class="form" action="/account/topup" method="post">
           <label>Сумма, ₽
             <input name="amount" type="number" min="1" max="15000" step="1" value="300" required />
