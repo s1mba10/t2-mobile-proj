@@ -47,5 +47,6 @@ data/*.sqlite3
 build/
 
 # Секреты лабораторных работ
+deploy/pr3-haproxy/certs/
 deploy/lab3/group_vars/vault.yml
 deploy/lab4/.t2-secrets
