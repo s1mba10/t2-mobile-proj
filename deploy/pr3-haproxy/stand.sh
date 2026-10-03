@@ -48,6 +48,14 @@ case "${1:-help}" in
 
   log)       $C logs --no-color --since "${2:-2m}" lb1 lb2 | grep -iE 'script|priority|MASTER|BACKUP' ;;
 
+  plain)     # доказательство, что к backend идёт открытый HTTP:
+             # запускаем перехват в фоне и сразу делаем запрос через балансировщик
+             $C exec -T lb1 sh -c 'timeout 8 tcpdump -i eth0 -n -A -s0 port 8000 2>/dev/null' &
+             sleep 2
+             curl -ks -o /dev/null --resolve site.ivbo21.local:443:127.0.0.1 \
+               https://site.ivbo21.local/api/v1/instance
+             wait ;;
+
   stats)     curl -s -u admin:admin123 --resolve site.ivbo21.local:8043:127.0.0.1 \
                "http://site.ivbo21.local:8043/stats;csv" \
              | awk -F, 'NR>1 && $2!="" {printf "%-14s %-12s %s\n", $1, $2, $18}' ;;
