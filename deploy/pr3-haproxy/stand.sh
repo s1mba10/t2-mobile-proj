@@ -27,20 +27,18 @@ case "${1:-help}" in
              done ;;
 
   algo)      # смена алгоритма балансировки: roundrobin | leastconn | source
-             a=${2:?укажите алгоритм}
-             # Файл примонтирован в контейнеры, поэтому правим его на месте:
-             # sed -i подменил бы inode, и контейнеры продолжили бы видеть старый файл.
+             a=${2:?укажите алгоритм: roundrobin, leastconn или source}
+             # Файл примонтирован в контейнеры, поэтому правим его на месте через cat:
+             # sed -i подменил бы inode, и контейнеры видели бы старый файл.
              tmp=$(mktemp)
              sed "s/^    balance .*/    balance $a/" ../haproxy/haproxy.cfg > "$tmp"
              cat "$tmp" > ../haproxy/haproxy.cfg
              rm -f "$tmp"
-             for n in lb1 lb2; do
-               $C exec -T $n haproxy -c -f /etc/haproxy/haproxy.cfg >/dev/null
-               $C exec -T $n sh -c 'kill -USR2 $(cat /run/haproxy.pid) 2>/dev/null || true'
-               $C exec -T $n sh -c 'pkill haproxy; sleep 1; haproxy -f /etc/haproxy/haproxy.cfg -D -p /run/haproxy.pid'
-             done
-             sleep 2
-             echo "Алгоритм переключён на $a" ;;
+             $C exec -T lb1 haproxy -c -f /etc/haproxy/haproxy.cfg >/dev/null
+             $C restart lb1 lb2 >/dev/null 2>&1
+             sleep 12
+             echo "Алгоритм переключён на $a"
+             $C exec -T lb1 grep -E "^    balance" /etc/haproxy/haproxy.cfg ;;
 
   fail)      # имитация отказа: гасим HAProxy на том узле, который держит VIP
              $C exec -T lb1 pkill haproxy && echo "HAProxy на lb1 остановлен" ;;
